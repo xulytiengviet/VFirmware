@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#09101b">
+  <meta name="description" content="VFirmware: hướng dẫn tiếng Việt về AI tạo firmware, OTA, reverse engineering, kiến trúc seed, HIL, bảo mật và lộ trình ESP32-S3.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="VFirmware | AI tạo mới và phân tích firmware">
+  <meta property="og:description" content="Giải thích bản chất, mã nguồn đã có, giới hạn kỹ thuật và hướng nghiên cứu AI-driven firmware engineering.">
+  <title>VFirmware — AI tạo mới và phân tích ngược firmware | Tài liệu tiếng Việt</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Bỏ qua điều hướng</a>
+<header class="topbar">
+  <div class="container navinner">
+    <a class="brand" href="#dau"><span class="brandmark" aria-hidden="true">V∴</span><span>VFirmware <span style="color:#8eacbf;font-size:12px;font-weight:600">/ Docs VI</span></span></a>
+    <nav class="navlinks" aria-label="Điều hướng chính">
+      <a href="#ban-chat">Bản chất</a><a href="#kien-truc">Kiến trúc</a><a href="#so-sanh">Nền tảng</a><a href="#thuc-hanh">Thực hành</a><a href="#an-toan">An toàn</a><a href="#lo-trinh">Lộ trình</a>
+      <a class="githublink" href="https://github.com/xulytiengviet/VFirmware" target="_blank" rel="noopener noreferrer">Mã nguồn GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <div class="container" id="dau">
+    <section class="hero" aria-labelledby="hero-title">
+      <div>
+        <div class="eyebrow"><span class="pulse"></span> AI-assisted firmware engineering · 2026</div>
+        <h1 id="hero-title">Firmware có thể <em>được AI tạo ra</em> — và phân tích để tái sử dụng.</h1>
+        <p class="lead">VFirmware là trang tài liệu nghiên cứu cách AI agent <strong>đọc khả năng phần cứng → sinh mã → kiểm thử → triển khai</strong>; đồng thời ứng dụng AI để tìm hiểu, phục hồi và tái triển khai firmware hiện có. Điều quan trọng là phân biệt <strong>điều mã nguồn đã làm</strong> với <strong>điều mới ở mức đề xuất</strong>.</p>
+        <div class="actions">
+          <a class="btn primary" href="#ban-chat">Hiểu bản chất →</a>
+          <a class="btn ghost" href="#thuc-hanh">Xem hướng dẫn chạy thử</a>
+        </div>
+        <div class="hero-tags"><span class="tag">Đối chiếu từ mã nguồn</span><span class="tag">Linux: build on-device</span><span class="tag">ESP32: build on host + OTA</span></div>
+      </div>
+      <div>
+        <div class="diagram" role="img" aria-label="Mô hình AI agent đọc phần cứng, qua cổng chính sách, tạo mã hoặc phân tích, kiểm thử rồi triển khai có giám sát">
+          <div class="diagramhead"><span>vf-eng / evidence-first pipeline</span><span class="dotset" aria-hidden="true"><span></span><span></span><span></span></span></div>
+          <div class="pipe">
+            <div class="node"><b>01 · AI Agent</b><small>LLM + công cụ</small></div><div class="arrow">→</div><div class="node"><b>02 · Capabilities</b><small>board / CPU / I/O</small></div>
+            <div class="pipe-middle">Cổng chính sách · kiểm tra quyền · giới hạn thiết bị</div>
+            <div class="node"><b>03a · Tạo mới</b><small>source → build</small></div><div class="arrow">↔</div><div class="node"><b>03b · Phân tích</b><small>binary → bằng chứng</small></div>
+            <div class="node amber"><b>04 · Verify</b><small>static / unit / HIL</small></div><div class="arrow">→</div><div class="node green"><b>05 · Deploy</b><small>OTA / rollback</small></div>
+            <div class="pipe-middle">Quan sát vận hành → báo cáo → con người phê duyệt vòng tiếp theo</div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="callout"><strong>Bản chất kỹ thuật:</strong> AI thường nằm <em>bên ngoài thiết bị</em> và điều phối công cụ. Trên Linux, seed là một dịch vụ không gian người dùng (user-space), không phải firmware BIOS/UEFI. Trên ESP32, seed là chương trình firmware chạy trên MCU. “AI tự viết firmware” không đồng nghĩa “LLM nằm trong ROM” hay “mọi chip tự biên dịch mã”.</div>
+  </div>
+
+  <section class="section" id="ban-chat">
+    <div class="container">
+      <div class="sectionline">01 / Tổng quan</div>
+      <h2>VFirmware thực sự là gì?</h2>
+      <p class="sectionintro">Kho mã <a href="https://github.com/xulytiengviet/VFirmware">xulytiengviet/VFirmware</a> hiện mang cấu trúc và thành phần từ <a href="https://github.com/Awis13/seed">Awis13/seed</a>: các seed cho Linux, ESP32, T-Embed, PDP-11; firmware ví dụ; và tài liệu giao thức. Trang này bổ sung phần giải thích tiếng Việt, <strong>không nhận rằng các khả năng AI/reverse engineering đề xuất đã có sẵn trong lõi.</strong></p>
+      <div class="cards">
+        <article class="card"><span class="symbol" aria-hidden="true">⌘</span><h3>Firmware</h3><p>Phần mềm cấp thấp điều khiển thiết bị: khởi tạo, đọc cảm biến, điều khiển GPIO, truyền thông, cập nhật OTA. Trên MCU, firmware thường nằm trong bộ nhớ flash.</p></article>
+        <article class="card"><span class="symbol green" aria-hidden="true">⟲</span><h3>Seed / bootstrapping</h3><p>Chương trình nền cho phép bên điều khiển truy vấn năng lực thiết bị và triển khai phiên bản mới. Cơ chế giữa Linux và ESP32 không giống nhau dù cùng ý tưởng vòng lặp cập nhật.</p></article>
+        <article class="card"><span class="symbol amber" aria-hidden="true">AI</span><h3>AI agent</h3><p>Hệ thống ngoài chip sử dụng LLM, thư viện, trình biên dịch, bộ kiểm thử và API. AI đề xuất giải pháp; độ đúng phải được xác minh bằng công cụ và phần cứng thực.</p></article>
+      </div>
+      <div class="section" style="padding-top:32px">
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Khái niệm</th><th>Chức năng</th><th>Điều không nên nhầm lẫn</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Boot ROM / bootloader</strong></td><td>Khởi động, xác minh và nạp ứng dụng; tùy loại phần cứng.</td><td>Không nhất thiết là LLM hoặc dịch vụ HTTP.</td></tr>
+              <tr><td><strong>Firmware ứng dụng</strong></td><td>Thực hiện logic thiết bị trên vi điều khiển, cảm biến, mô-đun mạng.</td><td>Không đồng nhất với Linux userspace.</td></tr>
+              <tr><td><strong>Agent + toolchain</strong></td><td>Sinh nguồn C/C++, biên dịch, phân tích và chạy kiểm thử.</td><td>Code sinh ra chưa phải firmware hoạt động tốt.</td></tr>
+              <tr><td><strong>OTA + watchdog</strong></td><td>Cập nhật qua mạng và cố gắng phục hồi khi khởi động/health check lỗi.</td><td>Không thể bảo đảm “không bao giờ brick” trước mọi lỗi nguồn, phân vùng, bootloader hay phần cứng.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="kien-truc">
+    <div class="container">
+      <div class="sectionline">02 / Hai hướng AI</div>
+      <h2>Một vòng đời firmware, hai con đường kỹ thuật</h2>
+      <p class="sectionintro">“Tạo mới” bắt đầu từ yêu cầu chức năng và thông số board. “Phân tích ngược” bắt đầu từ binary, hành vi thiết bị và các dữ kiện có thể kiểm chứng. Cả hai đều cần khâu phê duyệt và kiểm thử.</p>
+      <div class="featuregrid">
+        <article class="panel">
+          <h3><span class="symbol green" style="margin:0;font-size:18px">+</span> A. AI tạo firmware mới</h3>
+          <ol class="flow-list">
+            <li><strong>Đặc tả:</strong> xác định board, SoC, chân GPIO, cảm biến, nguồn điện, deadline thời gian thực.</li>
+            <li><strong>Grounding:</strong> nạp datasheet, SDK/driver thật và danh sách API hợp lệ thay vì suy đoán.</li>
+            <li><strong>Sinh mã:</strong> C/C++, mã khởi tạo, cấu hình build, test; kiểm tra thay đổi do AI tạo.</li>
+            <li><strong>Kiểm chứng:</strong> build, phân tích tĩnh, unit test, mô phỏng, HIL; kiểm tra timing/bộ nhớ.</li>
+            <li><strong>Triển khai:</strong> firmware được phê duyệt, ký số nếu hỗ trợ, cập nhật OTA có A/B và rollback.</li>
+          </ol>
+          <p class="note"><strong>Ví dụ có nguồn:</strong> <a href="https://github.com/Awis13/seed">seed</a>, <a href="https://reflow-labs.com/">Reflow</a> và <a href="https://autoembed.github.io/">AutoEmbed</a>. Chúng giải quyết những phần khác nhau, không thể coi là một sản phẩm hoàn chỉnh duy nhất.</p>
+        </article>
+        <article class="panel">
+          <h3><span class="symbol amber" style="margin:0;font-size:18px">↩</span> B. AI phân tích firmware cũ</h3>
+          <ol class="flow-list">
+            <li><strong>Ủy quyền:</strong> xác định quyền sở hữu, phạm vi được phép và mục tiêu bảo tồn/tương thích.</li>
+            <li><strong>Thu thập:</strong> lưu hash SHA-256, kiến trúc, địa chỉ nạp, UART logs, bản firmware gốc.</li>
+            <li><strong>Phân tách:</strong> kiểm tra định dạng, vùng dữ liệu, strings, thư viện và ngoại vi.</li>
+            <li><strong>Phân tích:</strong> disassemble/decompile, đối chiếu datasheet, suy luận hành vi có dẫn chứng.</li>
+            <li><strong>Tái triển khai sạch:</strong> viết mã tương thích từ đặc tả hành vi; so sánh I/O, kiểm thử trên môi trường cô lập.</li>
+          </ol>
+          <p class="note"><strong>Công cụ tham khảo:</strong> <a href="https://github.com/dmore/rea-reverse-engineering-anything">REA</a> và <a href="https://github.com/DatanoiseTV/revenant">revenant</a>. Kết quả tái triển khai là suy luận cần xác minh; không mặc nhiên là bản sao chính xác 1:1.</p>
+        </article>
+      </div>
+
+      <div style="margin-top:20px" class="callout warn"><strong>Điểm phân biệt:</strong> reverse engineering không đồng nghĩa giải mã được mọi firmware bị bảo vệ bằng mã hóa. Một nghiên cứu thực nghiệm từng đạt khoảng 65% tái dựng từ <strong>firmware bị XOR</strong> sau nhiều bước suy luận/kiểm tra; không phải chứng minh LSTM phá được AES chuẩn. <a href="https://something.fromnothing.blog/posts/something-from-nothing/">Đọc mô tả gốc</a>.</div>
+    </div>
+  </section>
+
+  <section class="section" id="so-sanh">
+    <div class="container">
+      <div class="sectionline">03 / Bằng chứng mã nguồn</div>
+      <h2>Những gì VFirmware đã có — và chưa có</h2>
+      <p class="sectionintro">Trạng thái bên dưới là <strong>kiểm tra sự hiện diện của mã và tài liệu</strong> trong repository tại thời điểm biên soạn; không phải chứng nhận đã chạy HIL hay kiểm toán bảo mật độc lập.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Hạng mục</th><th>Trạng thái</th><th>Đường dẫn / Giới hạn</th></tr></thead>
+          <tbody>
+            <tr><td>Linux seed HTTP + biên dịch tại nút</td><td><span class="badge">Có mã nguồn</span></td><td><a href="https://github.com/xulytiengviet/VFirmware/blob/main/seeds/linux/seed.c">seeds/linux/seed.c</a> — yêu cầu Linux có GCC.</td></tr>
+            <tr><td>ESP32 Heltec V3 + OTA</td><td><span class="badge">Có mã nguồn</span></td><td><a href="https://github.com/xulytiengviet/VFirmware/blob/main/seeds/esp32/src/main.cpp">seeds/esp32/src/main.cpp</a> — build trên host, nhận binary.</td></tr>
+            <tr><td>ESP32-S3 LilyGO T-Embed + OTA</td><td><span class="badge">Có mã nguồn</span></td><td><a href="https://github.com/xulytiengviet/VFirmware/blob/main/seeds/esp32-tembed/src/main.cpp">seeds/esp32-tembed/src/main.cpp</a> — chú ý board/partition tương thích.</td></tr>
+            <tr><td>PDP-11 (2.11BSD) seed</td><td><span class="badge">Có mã + nhật ký</span></td><td><a href="https://github.com/xulytiengviet/VFirmware/blob/main/docs/pdp11-growth-log.md">docs/pdp11-growth-log.md</a> — ví dụ do dự án gốc báo cáo.</td></tr>
+            <tr><td>Agent viết mã tự động</td><td><span class="badge limited">Tích hợp ngoài</span></td><td>Seed cung cấp API; cần tác nhân AI, chính sách, quyền và toolchain.</td></tr>
+            <tr><td>Phân tích ngược tích hợp REA / revenant</td><td><span class="badge proposal">Đề xuất</span></td><td>Chưa xác nhận có pipeline RE tích hợp trong kho hiện tại.</td></tr>
+            <tr><td>CVNSS4.0 / Base27 / ternary / BilaScript</td><td><span class="badge proposal">Định hướng R&amp;D</span></td><td>Ứng dụng tiềm năng vào giao tiếp tiếng Việt/biểu diễn trạng thái; chưa có bằng chứng lõi đã tích hợp.</td></tr>
+            <tr><td>HIL, ký ảnh, SBOM, policy gate đầy đủ</td><td><span class="badge proposal">Cần bổ sung</span></td><td>Không được hiểu là đã có kiểm chứng đạt chuẩn sản xuất.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section" style="padding-top:36px">
+        <h3>Khác biệt nền tảng: không có một cơ chế build dùng cho mọi thiết bị</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Nền tảng</th><th>Biên dịch mã mới</th><th>Hình thức cập nhật</th><th>Lưu ý thực tế</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Linux / Pi</strong></td><td>Tại node nếu có GCC</td><td>Nhận source → build → thay thế tiến trình</td><td>Đây là userspace Linux, không sửa boot ROM.</td></tr>
+              <tr><td><strong>PDP-11 / 2.11BSD</strong></td><td>Tại node nếu có C compiler</td><td>Biên dịch và thay tiến trình</td><td>Giới hạn 16-bit, cú pháp C cổ, tài nguyên rất nhỏ.</td></tr>
+              <tr><td><strong>ESP32 Heltec V3</strong></td><td>Trên PC/CI với PlatformIO</td><td>Upload .bin → apply → reboot → confirm</td><td>Không có GCC chạy ngay trên MCU; OTA có rủi ro phân vùng/nguồn.</td></tr>
+              <tr><td><strong>ESP32-S3 T-Embed</strong></td><td>Trên PC/CI với PlatformIO</td><td>Upload .bin vào OTA partition</td><td>Cần đúng pin map, partition, chip và phiên bản board.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="mo-phong">
+    <div class="container">
+      <div class="sectionline">04 / Mô hình thao tác</div>
+      <h2>Hai quy trình mẫu có kiểm soát</h2>
+      <p class="sectionintro">Chọn một luồng để hiểu thứ tự thực hiện. Đây là <strong>sơ đồ tài liệu tương tác</strong>, không chạy code trên thiết bị, không tải firmware và không tự động flash.</p>
+      <div class="tabbar" role="tablist" aria-label="Chọn quy trình">
+        <button class="tab" id="tab-new" role="tab" aria-controls="panel-new" aria-selected="true" tabindex="0" type="button">Tạo firmware mới</button>
+        <button class="tab" id="tab-re" role="tab" aria-controls="panel-re" aria-selected="false" tabindex="-1" type="button">Phân tích firmware hiện có</button>
+      </div>
+      <div id="panel-new" class="tabpanel panel" role="tabpanel" aria-labelledby="tab-new">
+        <div class="featuregrid">
+          <div><h3>Kịch bản: thêm cảm biến môi trường</h3><ol class="flow-list">
+            <li><strong>Input:</strong> người dùng mô tả cảm biến và board được xác thực.</li>
+            <li><strong>Agent:</strong> đọc <code>/capabilities</code>, datasheet và drivers.</li>
+            <li><strong>Build:</strong> biên dịch trên host nếu là ESP32, hoặc node có GCC nếu là Linux.</li>
+            <li><strong>Gate:</strong> chỉ tiếp tục khi test và phê duyệt đạt.</li>
+            <li><strong>OTA:</strong> nạp thử, kiểm tra health và rollback khi cần.</li>
+          </ol></div>
+          <div><h3>Điều kiện thành công cần đo</h3><p>Build pass; không gọi API giả; thời gian đáp ứng cảm biến đạt yêu cầu; không vượt RAM/flash; OTA thành công; thử nghiệm mất nguồn và phục hồi có kết quả; log có thể truy vết phiên bản.</p>
+          <p class="note"><strong>Tiêu chí quyết định:</strong> AI chỉ đề nghị bản cập nhật. Một bước kiểm duyệt độc lập quyết định được hay không được triển khai.</p></div>
+        </div>
+      </div>
+      <div id="panel-re" class="tabpanel panel" role="tabpanel" aria-labelledby="tab-re" hidden>
+        <div class="featuregrid">
+          <div><h3>Kịch bản: bảo tồn thiết bị cũ được phép nghiên cứu</h3><ol class="flow-list">
+            <li><strong>Input:</strong> firmware được cấp phép phân tích, hash SHA-256 và hồ sơ bo mạch.</li>
+            <li><strong>Triaging:</strong> nhận dạng CPU, strings, vectors và MMIO.</li>
+            <li><strong>Gắn bằng chứng:</strong> ánh xạ hàm/driver dựa trên disassembly và datasheet.</li>
+            <li><strong>Viết lại:</strong> thiết kế chương trình độc lập theo đặc tả chức năng.</li>
+            <li><strong>So sánh:</strong> test hành vi trên emulator/HIL rồi mới xem xét flash.</li>
+          </ol></div>
+          <div><h3>Điều kiện thành công cần đo</h3><p>Tỷ lệ hàm nhận dạng có bằng chứng; độ khớp I/O; tỷ lệ lệnh chưa hiểu; độ bao phủ bài kiểm thử; độ tương thích ngoại vi; số giả thuyết bị bác bỏ; tỷ lệ khởi động và thời gian phục hồi.</p><p class="note"><strong>Lưu ý:</strong> giải mã ngược không cho phép tuyên bố “sao chép 1:1” khi chưa so sánh hành vi có hệ thống.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="thuc-hanh">
+    <div class="container">
+      <div class="sectionline">05 / Quickstart</div>
+      <h2>Hướng dẫn chạy thử — bắt đầu từ thao tác an toàn</h2>
+      <p class="sectionintro">Tất cả lệnh dưới đây dành cho máy, firmware và mạng bạn quản lý. Không thực hiện flash tự động trong tài liệu. Việc đọc thông tin thiết bị trước giúp kiểm tra môi trường mà chưa thay đổi firmware.</p>
+      <div class="stepgrid">
+        <article class="panel">
+          <h3>Ví dụ 1 · Linux/WSL/Raspberry Pi</h3>
+          <p>Yêu cầu: Git, GCC, quyền thực thi trên máy kiểm thử. Trên Windows, có thể dùng WSL2 cho phần Linux.</p>
+          <pre data-copy><code>git clone https://github.com/xulytiengviet/VFirmware.git
+cd VFirmware
+gcc -O2 -o seed seeds/linux/seed.c
+./seed
+
+# Mở terminal thứ hai:
+curl http://127.0.0.1:8080/health</code></pre>
+          <p>Seed hiển thị token khi khởi động. Giữ token bí mật; dùng mạng cô lập. API có xác thực (ví dụ <code>/capabilities</code>):</p>
+          <pre data-copy><code># Linux shell: điền token từ console, không commit vào Git
+read -rs TOKEN
+curl -H "Authorization: Bearer $TOKEN" \
+  http://127.0.0.1:8080/capabilities</code></pre>
+        </article>
+        <article class="panel">
+          <h3>Ví dụ 2 · ESP32 Heltec V3 (chỉ build)</h3>
+          <p>Yêu cầu: Python, PlatformIO CLI và đúng loại bo mạch. Build trên máy tính, không phải trực tiếp trong ESP32.</p>
+          <pre data-copy><code>git clone https://github.com/xulytiengviet/VFirmware.git
+cd VFirmware/seeds/esp32
+python -m pip install --upgrade platformio
+pio run -e heltec_v3</code></pre>
+          <p>Với ESP32-S3 LilyGO T-Embed, sử dụng cấu hình dự án riêng:</p>
+          <pre data-copy><code>cd VFirmware/seeds/esp32-tembed
+pio run -e tembed</code></pre>
+          <p class="note"><strong>Không chạy lệnh flash trước khi kiểm tra:</strong> đúng chip/board, sơ đồ chân, nguồn điện, layout phân vùng, khả năng khôi phục và bản sao firmware cũ. Tài liệu này cố ý không chứa bước flash hàng loạt.</p>
+        </article>
+      </div>
+      <div style="margin-top:18px" class="panel">
+        <h3>Giao thức seed: những API nên hiểu trước</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Hành động</th><th>Linux seed</th><th>ESP32 seed</th></tr></thead>
+            <tbody>
+              <tr><td>Kiểm tra sống</td><td><code>GET /health</code></td><td><code>GET /health</code></td></tr>
+              <tr><td>Đọc phần cứng</td><td><code>GET /capabilities</code></td><td><code>GET /capabilities</code></td></tr>
+              <tr><td>Chuẩn bị firmware</td><td><code>POST /firmware/source</code></td><td><em>Biên dịch .bin ở host</em></td></tr>
+              <tr><td>Biên dịch</td><td><code>POST /firmware/build</code></td><td><em>Không có endpoint biên dịch trên MCU</em></td></tr>
+              <tr><td>Đưa firmware vào hệ thống</td><td><code>POST /firmware/apply</code></td><td><code>POST /firmware/upload</code> rồi <code>/firmware/apply</code></td></tr>
+              <tr><td>Xác nhận/cứu hộ</td><td><code>GET /firmware/apply/status</code>, <code>POST /firmware/rollback</code></td><td><code>POST /firmware/confirm</code>, <code>POST /firmware/rollback</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note" style="margin-bottom:0"><strong>Bảo vệ API:</strong> các endpoint ngoài <code>/health</code> yêu cầu Bearer token theo mã nguồn. Không đặt cổng HTTP trên Internet công cộng; token đơn thuần không thay thế TLS, ACL hay phân quyền cập nhật.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="nghien-cuu">
+    <div class="container">
+      <div class="sectionline">06 / Hệ sinh thái nghiên cứu</div>
+      <h2>AI thực sự làm được tới đâu trong năm 2026?</h2>
+      <p class="sectionintro">Các dự án bên dưới là nghiên cứu/sản phẩm tham khảo độc lập. Không hàm ý chúng đã tích hợp sẵn vào VFirmware hoặc mọi tuyên bố đã được kiểm toán độc lập.</p>
+      <div class="research">
+        <article class="card"><h3><a href="https://github.com/Awis13/seed">seed — AI firmware management</a></h3><p>HTTP API để tác nhân ngoài đọc phần cứng, gửi nguồn hoặc binary, cập nhật và theo dõi watchdog. Các bản Linux và ESP32 có luồng triển khai khác nhau.</p><span class="badge">Mã nguồn tham chiếu</span></article>
+        <article class="card"><h3><a href="https://reflow-labs.com/">Reflow — nhiều AI agent thiết kế phần cứng</a></h3><p>Hướng đến tạo firmware, sơ đồ KiCad, vỏ CAD, BOM và CI từ bản mô tả có xác nhận chân linh kiện. Kiểm tra đầu ra vẫn cần kỹ sư.</p><span class="badge limited">Công cụ bên ngoài</span></article>
+        <article class="card"><h3><a href="https://autoembed.github.io/">AutoEmbed — phát triển embedded bằng LLM</a></h3><p>Công bố tại SenSys 2026: 95,7% coding accuracy và 86,5% end-to-end task success trên 355 tác vụ, 71 mô-đun, 4 nền tảng. Không phải độ chính xác của VFirmware.</p><span class="badge limited">Kết quả nghiên cứu</span></article>
+        <article class="card"><h3><a href="https://github.com/dmore/rea-reverse-engineering-anything">REA — Reverse Engineer Anything</a></h3><p>Tổ chức công cụ phân tích binary, ứng dụng và hành vi chạy để cung cấp bằng chứng cho agent; không tự bảo đảm rằng bản tái viết tương đương.</p><span class="badge limited">Công cụ bên ngoài</span></article>
+        <article class="card"><h3><a href="https://github.com/DatanoiseTV/revenant">revenant — phục hồi firmware bỏ hỗ trợ</a></h3><p>Nhận diện SoC, phân tích peripheral, tạo pin map/device tree, dự án firmware khung và tùy chọn clean-room reimplementation; kết quả cần xác minh.</p><span class="badge limited">Công cụ bên ngoài</span></article>
+        <article class="card"><h3><a href="https://github.com/Gladess1102/legacy-firmware-reversing">legacy-firmware-reversing</a></h3><p>Phương pháp của tác giả dự án được minh họa trên máy nghe nhạc Sharp MP-B300 đời 2004. Đây là case study do dự án báo cáo, không phải bằng chứng giải mã bất kỳ firmware nào.</p><span class="badge limited">Case study bên ngoài</span></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="an-toan">
+    <div class="container">
+      <div class="sectionline">07 / Kiến trúc tin cậy</div>
+      <h2>Quyền hạn, kiểm chứng và rollback quan trọng hơn lời hứa “tự động 100%”</h2>
+      <p class="sectionintro">Firmware có thể can thiệp tới cảm biến, motor, pin sạc, mạng, dữ liệu cá nhân và khả năng khởi động. Vì vậy một agent sinh được mã chạy không đủ điều kiện cho phát hành sản xuất.</p>
+      <div class="cards">
+        <article class="card"><span class="symbol amber" aria-hidden="true">!</span><h3>Rủi ro của AI</h3><ul><li>API/địa chỉ thanh ghi không tồn tại.</li><li>Vi phạm timing, stack, RAM, ISR và an toàn điện.</li><li>Lỗi phân vùng OTA, mất nguồn, tương thích board.</li><li>Prompt injection từ datasheet, log hoặc mã nguồn không tin cậy.</li></ul></article>
+        <article class="card"><span class="symbol" aria-hidden="true">♢</span><h3>Cổng xác minh</h3><ul><li>Chỉ cho agent đọc những tài nguyên cần thiết.</li><li>Pin map, phiên bản SDK và dependency được khóa.</li><li>Static analysis, unit test, HIL, fault injection.</li><li>Duyệt khác biệt, lưu nhật ký, SBOM và provenance.</li></ul></article>
+        <article class="card"><span class="symbol green" aria-hidden="true">✓</span><h3>Phát hành an toàn hơn</h3><ul><li>Build xác định và ký firmware image.</li><li>Secure Boot/anti-rollback nếu chip hỗ trợ.</li><li>Phân vùng A/B và xác nhận trạng thái sau boot.</li><li>Quy trình cứu hộ vật lý, SWD/JTAG/serial có kiểm soát.</li></ul></article>
+      </div>
+      <div class="callout warn" style="margin-top:18px"><strong>Không thể tuyệt đối hóa watchdog:</strong> watchdog/rollback giúp giảm một số lỗi phần mềm, nhưng không bảo vệ được mọi tình huống như hỏng bootloader, flash bị ghi sai, mất nguồn đúng lúc ghi metadata, cấu hình partition không tương thích hoặc hư hại vật lý.</div>
+      <div class="section" style="padding-top:34px">
+        <h3>Thước đo cần công bố cho VFirmware</h3>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Nhóm đo</th><th>Chỉ số</th><th>Bằng chứng yêu cầu</th></tr></thead>
+          <tbody>
+            <tr><td>Độ đúng nguồn</td><td>Build pass rate, lỗi SDK giả, test coverage</td><td>CI logs, mã nguồn, seed cố định, bộ test</td></tr>
+            <tr><td>Thời gian thực</td><td>p95/p99 latency, jitter, missed deadlines</td><td>HIL traces, đo CPU/RAM/flash</td></tr>
+            <tr><td>Cập nhật</td><td>OTA pass rate, rollback recovery rate, MTTR</td><td>Log khi mất Wi-Fi, reboot, ngắt nguồn có kiểm soát</td></tr>
+            <tr><td>Phân tích ngược</td><td>Function-match, I/O equivalence, unknown rate</td><td>Binary gốc có quyền sử dụng, phép thử đối chiếu</td></tr>
+            <tr><td>Bảo mật</td><td>Signature checks, access violations, recovery behavior</td><td>Threat model và audit độc lập</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="lo-trinh">
+    <div class="container">
+      <div class="sectionline">08 / Lộ trình phát triển</div>
+      <h2>Đưa VFirmware từ kho mã tham khảo thành phòng thí nghiệm có thể kiểm chứng</h2>
+      <div class="featuregrid">
+        <div class="panel"><h3>Giai đoạn 1 · Baseline</h3><ol class="flow-list">
+          <li><strong>Khóa trạng thái gốc:</strong> ghi commit, board revision, SDK/PlatformIO version, license và API contract.</li>
+          <li><strong>CI theo board:</strong> Linux build + unit test; PlatformIO matrix cho những board thực sự hỗ trợ.</li>
+          <li><strong>Đo nguyên trạng:</strong> binary size, RAM, flash, OTA recovery, boot log; công bố log thay vì chỉ tuyên bố.</li>
+        </ol></div>
+        <div class="panel"><h3>Giai đoạn 2 · AI có kiểm soát</h3><ol class="flow-list">
+          <li><strong>Agent gateway:</strong> chỉ cấp quyền đọc capabilities và đề xuất patch trong sandbox.</li>
+          <li><strong>Policy engine:</strong> allowlist peripheral, compile, static check và HIL trước khi duyệt.</li>
+          <li><strong>OTA có bằng chứng:</strong> firmware manifest, checksum/signature, approval, health verification và rollback.</li>
+        </ol></div>
+        <div class="panel"><h3>Giai đoạn 3 · Reverse engineering hợp pháp</h3><ol class="flow-list">
+          <li><strong>Nhận firmware mẫu:</strong> dùng bản mã mở hoặc của chính chủ, lưu SHA-256.</li>
+          <li><strong>Phân tích độc lập:</strong> Ghidra/radare2/binwalk + LLM để sinh báo cáo có mức độ tin cậy.</li>
+          <li><strong>Đối chiếu:</strong> so hành vi ngoại vi, hồi quy và kiểm thử trên board thử nghiệm.</li>
+        </ol></div>
+        <div class="panel"><h3>Giai đoạn 4 · Hướng tiếng Việt, ternary và edge</h3><ol class="flow-list">
+          <li><strong>CVNSS4.0:</strong> codec giao tiếp tiếng Việt có round-trip, NFC/NFD và bộ test độc lập.</li>
+          <li><strong>Base27 / trit:</strong> ba trit biểu diễn 27 giá trị (<code>3³ = 27</code>), chỉ là mã biểu diễn, không tự làm CPU thành tam phân.</li>
+          <li><strong>BilaScript / NHDL:</strong> nghiên cứu DSL/IR có kiểu để tạo cấu hình/logic nhúng; xác minh rồi mới phát sinh mã cho MCU/FPGA.</li>
+        </ol></div>
+      </div>
+      <p class="note" style="margin-top:18px"><strong>Phân biệt trạng thái:</strong> Giai đoạn 1–4 là đề xuất phát triển. Không đồng nghĩa tính năng đã được tích hợp hoặc benchmark đã hoàn thành.</p>
+    </div>
+  </section>
+
+  <section class="section" id="faq">
+    <div class="container">
+      <div class="sectionline">09 / FAQ</div>
+      <h2>Những câu hỏi dễ hiểu sai</h2>
+      <details><summary>VFirmware có AI chạy ngay trên ESP32-S3 không?</summary><p>Trong mã nguồn đã kiểm tra, seed ESP32-S3 là firmware quản lý API/OTA; AI agent được hình dung là hệ thống bên ngoài. Có thể nghiên cứu TinyML/TinyLLM chạy cận biên, nhưng đó là hạng mục khác, cần mô hình, RAM/PSRAM, flash và benchmark riêng.</p></details>
+      <details><summary>ESP32 có thể tự biên dịch chương trình C/C++ mới như Linux không?</summary><p>Không theo cách của kho mã hiện tại. Mã seed ESP32 ghi rõ biên dịch trên host rồi upload binary. Linux/PDP-11 có thể tự biên dịch nếu cài compiler tương ứng. “On-device compilation” phải gắn đúng nền tảng và điều kiện.</p></details>
+      <details><summary>Chỉ cần watchdog thì chắc chắn không brick?</summary><p>Không. Watchdog chỉ xử lý một tập tình huống đã được thiết kế. Khôi phục sau lỗi bootloader, phân vùng flash, mất điện, thay đổi fuse và lỗi phần cứng cần chiến lược riêng.</p></details>
+      <details><summary>AI có thể lấy lại nguyên bản mã nguồn từ binary không?</summary><p>Thường không. Decompiler có thể giúp suy ra mã tương đương, nhưng tên biến, comments, cấu trúc nguồn và thuật toán tối ưu hóa có thể mất. Nên dùng đối chiếu hành vi thay cho khẳng định sao chép chính xác.</p></details>
+      <details><summary>AutoEmbed 95,7% có nghĩa 95,7% firmware AI là an toàn?</summary><p>Không. Con số này là coding accuracy trong bộ thử nghiệm AutoEmbed, khác với tỷ lệ hoàn thành tác vụ đầu-cuối 86,5%, và không đại diện cho độ an toàn tuyệt đối hoặc hiệu quả của VFirmware.</p></details>
+      <details><summary>CVNSS4.0 và Base27 có thay thế toàn bộ Unicode hoặc nhị phân không?</summary><p>Không. CVNSS4.0 cần đặc tả và round-trip đúng để dùng làm codec; Base27 là phép biểu diễn 27 ký hiệu bằng ba trit. Đây là lớp dữ liệu/giao tiếp có thể nghiên cứu, không thay cho chuẩn Unicode, ISA nhị phân, trình biên dịch hay phần cứng tam phân thực.</p></details>
+      <details><summary>Có thể dùng để phân tích firmware thiết bị của người khác?</summary><p>Chỉ khi bạn có quyền và mục tiêu phù hợp luật, giấy phép, điều khoản thiết bị. Luồng tài liệu ưu tiên bảo tồn, tương thích, sửa chữa và nghiên cứu bảo mật có ủy quyền, không hướng tới vượt kiểm soát truy cập.</p></details>
+    </div>
+  </section>
+
+  <section class="section" id="nguon">
+    <div class="container">
+      <div class="sectionline">10 / Nguồn gốc & tài liệu</div>
+      <h2>Nguồn kiểm tra và ghi nhận tác giả</h2>
+      <p class="sectionintro">Ưu tiên tài liệu/mã nguồn của dự án gốc và bài báo. Mỗi con số hoặc tuyên bố bên ngoài phải được đặt trong phạm vi thí nghiệm của chính nguồn đó.</p>
+      <div class="refs">
+        <div class="refitem"><a href="https://github.com/xulytiengviet/VFirmware">VFirmware / xulytiengviet</a><small>Repository đang được biên soạn tài liệu tiếng Việt.</small></div>
+        <div class="refitem"><a href="https://github.com/Awis13/seed">Awis13 / seed</a><small>Lõi tham chiếu, các seed, firmware, API và ví dụ PDP-11.</small></div>
+        <div class="refitem"><a href="https://github.com/xulytiengviet/VFirmware/blob/main/seeds/esp32/src/main.cpp">ESP32 seed source</a><small>Trong mã nguồn nêu rõ ESP32 không có compiler; build trên host.</small></div>
+        <div class="refitem"><a href="https://doi.org/10.1145/3774906.3800466">AutoEmbed — SenSys 2026</a><small>Yang và cộng sự; độ chính xác 95,7%, hoàn thành 86,5%.</small></div>
+        <div class="refitem"><a href="https://reflow-labs.com/">Reflow Labs</a><small>AI agent cho firmware, PCB, enclosure, tài liệu và CI.</small></div>
+        <div class="refitem"><a href="https://github.com/dmore/rea-reverse-engineering-anything">REA</a><small>Công cụ tổ chức phân tích binary/hành vi bởi agent.</small></div>
+        <div class="refitem"><a href="https://github.com/DatanoiseTV/revenant">revenant</a><small>Phân tích firmware/binary và tạo hiện vật tái triển khai.</small></div>
+        <div class="refitem"><a href="https://something.fromnothing.blog/posts/something-from-nothing/">Something From Nothing</a><small>Ví dụ LSTM + suy luận trên firmware XOR, không phải phá AES.</small></div>
+      </div>
+      <p class="note" style="margin-top:20px"><strong>Giấy phép:</strong> mã gốc ghi MIT, có dữ liệu ngoại lệ trong <code>seeds/esp32-tembed/src/skills/ir_codes_tvbgone.h</code> theo CC BY-SA của bên thứ ba. Khi tái sử dụng phải bảo toàn ghi công/giấy phép phù hợp. Xem <a href="https://github.com/xulytiengviet/VFirmware/blob/main/README.md">README</a> và <a href="https://github.com/xulytiengviet/VFirmware/blob/main/seeds/README.md">seeds/README.md</a>.</p>
+    </div>
+  </section>
+</main>
+<footer><div class="container"><div><strong>VFirmware · Docs VI</strong><div>Tài liệu kỹ thuật, giáo dục và nghiên cứu có kiểm chứng.</div></div><div>Được biên soạn cho <a href="https://github.com/xulytiengviet/VFirmware">xulytiengviet/VFirmware</a> · lõi tham chiếu <a href="https://github.com/Awis13/seed">Awis13/seed</a> · cập nhật 12/11/2026</div></div></footer>
+</body>
+</html>
