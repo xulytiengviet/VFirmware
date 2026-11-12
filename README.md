@@ -1,3 +1,13 @@
+> 🇻🇳 **TÀI LIỆU TIẾNG VIỆT – VFirmware**
+>
+> [**Mở trang giải thích và hướng dẫn chi tiết**](docs/index.html) · [Mở trên GitHub Pages (nếu đã cấu hình Pages)](https://xulytiengviet.github.io/VFirmware/docs/)
+>
+> Trang tiếng Việt trình bày hai hướng **AI hỗ trợ tạo mới firmware** và **AI hỗ trợ phân tích/phục hồi firmware hiện có**, kiến trúc, API, hướng dẫn Linux/ESP32, kiểm chứng HIL, bảo mật và lộ trình CVNSS4.0–Base27–Ternary. Tài liệu ghi rõ **Linux có thể build tại nút nếu có GCC; ESP32/ESP32-S3 cần build trên host rồi OTA**. Các tích hợp reverse engineering, AI tự hành, CVNSS4.0 và ternary được đánh dấu là **định hướng** khi chưa có mã tương ứng trong repository.
+>
+> **Nguồn gốc & ghi công:** lõi mã hiện tại dựa trên [Awis13/seed](https://github.com/Awis13/seed). Không thay đổi giấy phép nguyên gốc và ngoại lệ dữ liệu CC BY-SA trong \`seeds/esp32-tembed\`. Phần bên dưới giữ nguyên README gốc để tiện đối chiếu.
+
+---
+
 # seed.c
 
 [![CI](https://github.com/Awis13/seed/actions/workflows/ci.yml/badge.svg)](https://github.com/Awis13/seed/actions/workflows/ci.yml)
